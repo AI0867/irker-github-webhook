@@ -89,7 +89,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if check_peer(self.client_address[0]):
             target = CONFIG["targets"].get(self.path)
             if target:
-                #self.connection.settimeout(0) # Don't hang forever. JSON blobs should fit in a single packet
+                self.connection.settimeout(1) # Don't hang forever.
                 rawblob = self.rfile.read(int(self.headers["content-length"]))
                 utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
                 query = urllib.parse.parse_qsl(utf8blob)
