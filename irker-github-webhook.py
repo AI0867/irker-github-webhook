@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import cidr
 import http.client
 import http.server
 import json
@@ -77,26 +78,33 @@ def process_blob(blob, target):
         except:
             traceback.print_exc()
 
+def check_peer(peer):
+    address = cidr.CIDR(peer)
+    masks = [cidr.CIDR(ip) for ip in CONFIG["ips"]]
+    matches = [address in mask for mask in masks]
+    return any(matches)
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
-        print("Client {}:{}".format(*self.client_address))
-        # TODO: match with github IPs
-        target = CONFIG["targets"].get(self.path)
-        if target:
-            #self.connection.settimeout(0) # Don't hang forever. JSON blobs should fit in a single packet
-            rawblob = self.rfile.read() if "content-length" not in self.headers else self.rfile.read(int(self.headers["content-length"]))
-            utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
-            query = urllib.parse.parse_qsl(utf8blob)
-            if len(query) == 1 and query[0][0] == "payload":
-                jsonblob = json.loads(query[0][1])
-                if target["project"] == jsonblob["repository"]["owner"]["name"]:
-                    process_blob(jsonblob, target)
+        if check_peer(self.client_address[0]):
+            target = CONFIG["targets"].get(self.path)
+            if target:
+                #self.connection.settimeout(0) # Don't hang forever. JSON blobs should fit in a single packet
+                rawblob = self.rfile.read() if "content-length" not in self.headers else self.rfile.read(int(self.headers["content-length"]))
+                utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
+                query = urllib.parse.parse_qsl(utf8blob)
+                if len(query) == 1 and query[0][0] == "payload":
+                    jsonblob = json.loads(query[0][1])
+                    if target["project"] == jsonblob["repository"]["owner"]["name"]:
+                        process_blob(jsonblob, target)
+                    else:
+                        print("Project mismatch {} {}".format(target["project"], jsonblob["repository"]["owner"]["name"]))
                 else:
-                    print("Project mismatch {} {}".format(target["project"], jsonblob["repository"]["owner"]["name"]))
+                    print("No payload")
             else:
-                print("No payload")
+                print("No target found for {}".format(self.path))
         else:
-            print("No target found for {}".format(self.path))
+            print("Not GitHub: {}".format(self.client_address[0]))
         self.send_response(200)
         self.end_headers()
 
