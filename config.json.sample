@@ -1,0 +1,24 @@
+{
+    "ips": [
+        "207.97.227.253/32",
+        "50.57.128.197/32",
+        "108.171.174.178/32",
+        "50.57.231.61/32",
+        "204.232.175.64/27",
+        "192.30.252.0/22"
+    ],
+    "port": 8080,
+    "targets": {
+        "/some_project": {
+            "project": "some_project",
+            "channels": {
+                "*": [
+                    "irc://chat.freenode.net/##some-project"
+                ],
+                "author@some-project.org": [
+                    "irc://chat.freenode.net/##author"
+                ]
+            }
+        }
+    }
+}
