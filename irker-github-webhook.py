@@ -31,7 +31,7 @@ def file_list(com):
     filelist = sorted(set(filelist))
     filestring = ",".join(filelist)
     if len(filestring) > 80 and len(filelist) > 1:
-        prefix = posixpath.commonprefix(filelist)
+        prefix = posixpath.commonprefix(filelist).rpartition("/")[0] + "/"
         filestring = "{prefix} ({filenum} files)".format(prefix=prefix, filenum=len(filelist))
     return filestring
 
