@@ -29,11 +29,18 @@ def shorten(url):
 def file_list(com):
     filelist = com["modified"] + com["added"] + com["removed"]
     filelist = sorted(set(filelist))
-    filestring = ",".join(filelist)
-    if len(filestring) > 80 and len(filelist) > 1:
-        prefix = posixpath.commonprefix(filelist).rpartition("/")[0] + "/"
-        filestring = "{prefix} ({filenum} files)".format(prefix=prefix, filenum=len(filelist))
-    return filestring
+    if len(filelist) == 1:
+        return filelist[0]
+    prefix = posixpath.commonprefix(filelist).rpartition("/")[0] + "/"
+    suffixes = [entry[len(prefix):] for entry in filelist]
+    sufstring = " ".join(suffixes)
+    if len(sufstring) < 80:
+        return "{pre} ({suf})".format(pre=prefix, suf=sufstring)
+    dirs = len({suffix.rpartition("/")[0] for suffix in suffixes})
+    if dirs == 1:
+        return "{pre} ({nfiles} files)".format(pre=prefix, nfiles=len(suffixes))
+    else:
+        return "{pre} ({nfiles} files in {ndirs} dirs)".format(pre=prefix, nfiles=len(suffixes), ndirs=dirs)
 
 COLORS = {'reset': '\x0f', 'yellow': '\x0307', 'green': '\x0303', 'bold': '\x02', 'red': '\x0305'}
 
