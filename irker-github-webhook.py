@@ -35,7 +35,10 @@ def file_list(com):
     suffixes = [entry[len(prefix):] for entry in filelist]
     sufstring = " ".join(suffixes)
     if len(sufstring) < 80:
-        return "{pre} ({suf})".format(pre=prefix, suf=sufstring)
+        if prefix == "/":
+            return " ".join(filelist)
+        else:
+            return "{pre} ({suf})".format(pre=prefix, suf=sufstring)
     dirs = len({suffix.rpartition("/")[0] for suffix in suffixes})
     if dirs == 1:
         return "{pre} ({nfiles} files)".format(pre=prefix, nfiles=len(suffixes))
