@@ -3,8 +3,14 @@
 import http.client
 import http.server
 import json
+import socket
 import traceback
 import urllib.parse
+
+CONFIG_FILE = "config.json"
+CONFIG = json.load(open(CONFIG_FILE))
+
+IRKER_PORT = 6659
 
 def shorten(url):
     try:
@@ -47,37 +53,56 @@ def format_commit(everything, commit):
         url=short_url,
         **COLORS)
 
+def target_channels(target, commit):
+    chans = []
+    email = commit["author"]["email"]
+    if "*" in target["channels"]:
+        chans += target["channels"]["*"]
+    if email in target["channels"]:
+        chans += target["channels"][email]
+    return chans
 
-#Filtering and channel-selection should be done here
-def blob_to_irc_msgs(blob):
-    msgs = []
+def send_to_irker(message, channels):
+    print("{chans}: {msg}".format(chans=",".join(channels), msg=message))
+    envelope = { "to": channels, "privmsg": message }
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.sendto(json.dumps(envelope).encode("utf-8"), ("localhost", IRKER_PORT))
+
+def process_blob(blob, target):
     for commit in blob["commits"]:
         try:
-            msgs.append(format_commit(blob, commit))
+            message = format_commit(blob, commit)
+            channels = target_channels(target, commit)
+            send_to_irker(message, channels)
         except:
             traceback.print_exc()
-    return msgs
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def do_POST(self):
-        #self.connection.settimeout(0) # Don't hang forever. JSON blobs should fit in a single packet
-        rawblob = self.rfile.read() if "content-length" not in self.headers else self.rfile.read(int(self.headers["content-length"]))
-        utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
-        #unquotedblob = urllib.parse.unquote_plus(utf8blob)
-        #if unquotedblob.startswith("payload="):
-        #    jsonblob = json.loads(unquotedblob[8:])
-        query = urllib.parse.parse_qsl(utf8blob)
-        if len(query) == 1 and query[0][0] == "payload":
-            jsonblob = json.loads(query[0][1])
-            msgs = blob_to_irc_msgs(jsonblob)
-            for msg in msgs:
-                print(msg)
+        print("Client {}:{}".format(*self.client_address))
+        # TODO: match with github IPs
+        target = CONFIG["targets"].get(self.path)
+        if target:
+            #self.connection.settimeout(0) # Don't hang forever. JSON blobs should fit in a single packet
+            rawblob = self.rfile.read() if "content-length" not in self.headers else self.rfile.read(int(self.headers["content-length"]))
+            utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
+            query = urllib.parse.parse_qsl(utf8blob)
+            if len(query) == 1 and query[0][0] == "payload":
+                jsonblob = json.loads(query[0][1])
+                if target["project"] == jsonblob["repository"]["owner"]["name"]:
+                    process_blob(jsonblob, target)
+                else:
+                    print("Project mismatch {} {}".format(target["project"], jsonblob["repository"]["owner"]["name"]))
+            else:
+                print("No payload")
+        else:
+            print("No target found for {}".format(self.path))
         self.send_response(200)
         self.end_headers()
 
 if __name__ == "__main__":
     import sys
-    server = http.server.HTTPServer(("", int(sys.argv[1])), Handler)
+    server = http.server.HTTPServer(("", CONFIG["port"]), Handler)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
