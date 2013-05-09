@@ -4,6 +4,7 @@ import cidr
 import http.client
 import http.server
 import json
+import posixpath
 import socket
 import traceback
 import urllib.parse
@@ -30,11 +31,8 @@ def file_list(com):
     filelist = sorted(set(filelist))
     filestring = ",".join(filelist)
     if len(filestring) > 80 and len(filelist) > 1:
-        pre = filelist[0]
-        for fi in filelist:
-            while not fi.startswith(pre):
-                pre = pre.rpartition("/")[0]
-        filestring = "{prefix}/ ({filenum} files)".format(prefix=pre, filenum=len(filelist))
+        prefix = posixpath.commonprefix(filelist)
+        filestring = "{prefix} ({filenum} files)".format(prefix=prefix, filenum=len(filelist))
     return filestring
 
 COLORS = {'reset': '\x0f', 'yellow': '\x0307', 'green': '\x0303', 'bold': '\x02', 'red': '\x0305'}
