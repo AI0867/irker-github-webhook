@@ -93,16 +93,25 @@ def check_peer(peer):
     return any(matches)
 
 class Handler(http.server.BaseHTTPRequestHandler):
+    def grab_json(self):
+        rawblob = self.rfile.read(int(self.headers["content-length"]))
+        utf8blob = rawblob.decode("utf-8")
+        if self.headers["content-type"] == "application/x-www-form-urlencoded":
+            query = urllib.parse.parse_qsl(utf8blob)
+            if len(query) == 1 and query[0][0] == "payload":
+                return json.loads(query[0][1])
+        elif self.headers["content-type"] == "application/json":
+            return json.loads(utf8blob)
+        else:
+            print("Invalid content-type: {}".format(self.headers["content-type"]))
+        return None
     def do_POST(self):
         if check_peer(self.client_address[0]):
             target = CONFIG["targets"].get(self.path)
             if target:
                 self.connection.settimeout(1) # Don't hang forever.
-                rawblob = self.rfile.read(int(self.headers["content-length"]))
-                utf8blob = rawblob.decode("utf-8") # This shouldn't be necessary, but urllib is flaky in 3.1
-                query = urllib.parse.parse_qsl(utf8blob)
-                if len(query) == 1 and query[0][0] == "payload":
-                    jsonblob = json.loads(query[0][1])
+                jsonblob = self.grab_json()
+                if jsonblob:
                     if target["project"] == jsonblob["repository"]["owner"]["name"]:
                         process_blob(jsonblob, target)
                     else:
