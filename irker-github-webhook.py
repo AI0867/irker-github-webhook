@@ -64,6 +64,15 @@ def format_commit(everything, commit):
         url=short_url,
         **COLORS)
 
+def format_tag(everything):
+    return "{bold}{project}:{reset} {green}{pusher}{reset} {repo}: {bold}{sha}{reset} tagged as {yellow}{tag}{reset}".format(
+        project=everything["repository"]["owner"]["name"],
+        repo=everything["repository"]["name"],
+        pusher=everything["pusher"]["name"],
+        tag=everything["ref"].split("/")[-1],
+        sha=everything["head_commit"]["id"][:6],
+        **COLORS)
+
 def target_channels(target, commit):
     chans = []
     email = commit["author"]["email"]
@@ -84,6 +93,14 @@ def process_blob(blob, target):
         try:
             message = format_commit(blob, commit)
             channels = target_channels(target, commit)
+            send_to_irker(message, channels)
+        except:
+            traceback.print_exc()
+    if blob["ref"].startswith("refs/tags"):
+        try:
+            message = format_tag(blob)
+            fake_commit = {"author":blob["pusher"]} #TODO: factor this properly
+            channels = target_channels(target, fake_commit)
             send_to_irker(message, channels)
         except:
             traceback.print_exc()
