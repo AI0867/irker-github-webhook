@@ -21,6 +21,8 @@ def shorten(url):
         resp = con.getresponse()
         if resp.status == 201:
             url = dict(resp.getheaders()).get("Location", url)
+        else:
+            print("git.io returned status: {}".format(resp.status))
         con.close()
     except:
         traceback.print_exc()
