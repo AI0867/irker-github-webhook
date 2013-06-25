@@ -58,7 +58,7 @@ def format_commit(everything, commit):
         repo=everything["repository"]["name"],
         branch=everything["ref"].split("/")[-1],
         author=commit["author"]["name"],
-        sha=commit["id"][:6],
+        sha=commit["id"][:12],
         files=files,
         msg=message,
         url=short_url,
@@ -70,7 +70,7 @@ def format_tag(everything):
         repo=everything["repository"]["name"],
         pusher=everything["pusher"]["name"],
         tag=everything["ref"].split("/")[-1],
-        sha=everything["head_commit"]["id"][:6],
+        sha=everything["head_commit"]["id"][:12],
         **COLORS)
 
 def target_channels(target, commit):
